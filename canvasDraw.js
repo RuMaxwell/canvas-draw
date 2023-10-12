@@ -9,20 +9,58 @@ export function getDrawInstance(canvasWidth, canvasHeight) {
   };
 }
 
-export class CustomComponent {
+function provide(component, providerConstructor, ...args) {
+  if (typeof providerConstructor !== 'function') {
+    throw new Error('provider is not a function');
+  }
+  if (!component?.providers || typeof component.providers !== 'object') {
+    return;
+  }
+  component.providers[providerConstructor.name] = new providerConstructor(
+    ...args,
+  );
+}
+
+class CanvasComponent {
   width;
   height;
   id;
 
+  providers = {};
+
+  constructor() { }
+
+  ofId(id) {
+    this.id = id;
+    return this;
+  }
+}
+
+export class CustomComponent extends CanvasComponent {
+  _init;
   _measure;
   _draw;
 
-  constructor({ measure = function () {}, draw = function () {} }) {
+  constructor({
+    init = function () { },
+    measure = function () { },
+    draw = function () { },
+  }) {
+    super();
+    this._init = init;
     this._measure = measure;
     this._draw = draw;
   }
-  static new({ measure = function () {}, draw = function () {} }) {
+  static new({
+    init = function () { },
+    measure = function () { },
+    draw = function () { },
+  }) {
     return new CustomComponent(...arguments);
+  }
+
+  init() {
+    this._init.call(this);
   }
 
   measure(di, ctx) {
@@ -34,48 +72,158 @@ export class CustomComponent {
   }
 }
 
-export class Canvas {
-  width;
-  height;
-  id;
+export class SingleChildCustomComponent extends CanvasComponent {
+  child;
+
+  _init;
+  _measure;
+  _draw;
+
+  constructor(
+    { init = function () { }, measure = function () { }, draw = function () { } },
+    child,
+  ) {
+    super();
+    this._init = init;
+    this._measure = measure;
+    this._draw = draw;
+    this.child = child;
+  }
+  static new(
+    { init = function () { }, measure = function () { }, draw = function () { } },
+    child,
+  ) {
+    return new CustomComponent(...arguments);
+  }
+
+  init() {
+    this._init.call(this);
+  }
+
+  measure(di, ctx) {
+    this._measure.call(this, di, ctx);
+  }
+
+  draw(di, ctx) {
+    this._draw.call(this, di, ctx);
+  }
+}
+
+export class MultiChildCustomComponent extends CanvasComponent {
+  children;
+
+  _init;
+  _measure;
+  _draw;
+
+  constructor(
+    { init = function () { }, measure = function () { }, draw = function () { } },
+    ...children
+  ) {
+    super();
+    this._measure = measure;
+    this._draw = draw;
+    this.children = children;
+  }
+  static new(
+    { init = function () { }, measure = function () { }, draw = function () { } },
+    ...children
+  ) {
+    return new CustomComponent(...arguments);
+  }
+
+  init() {
+    this._init.call(this);
+  }
+
+  measure(di, ctx) {
+    this._measure.call(this, di, ctx);
+  }
+
+  draw(di, ctx) {
+    this._draw.call(this, di, ctx);
+  }
+}
+
+export class Canvas extends CanvasComponent {
   child;
 
   backgroundColor;
+  grid;
 
-  constructor({ backgroundColor = 'transparent' }, child) {
+  constructor({ backgroundColor = 'transparent', grid = false }, child) {
+    super();
     this.child = child;
     this.backgroundColor = backgroundColor;
+    this.grid = grid;
   }
-  static new({ backgroundColor = 'transparent' }, child) {
+  static new({ backgroundColor = 'transparent', grid = false }, child) {
     return new Canvas(...arguments);
+  }
+
+  init() {
+    this.child?.init();
   }
 
   measure(di, ctx) {
     if (!this.child) return;
     this.child.measure(di, ctx);
-    this.width = this.child.width;
+    this.width = Math.min(this.child.width, di.contentWidth);
     this.height = this.child.height;
   }
 
   draw(di, ctx) {
     if (!this.child) return;
-    ctx.fillStyle = this.backgroundColor;
-    ctx.fillRect(0, 0, di.contentWidth, di.contentHeight);
+    ctx.fillStyle = toCanvasColor(di, ctx, this.backgroundColor);
+    ctx.fillRect(di.x, di.y, this.width, this.height);
+    if (this.grid) {
+      this._drawGrid(di, ctx);
+    }
     this.child.draw(di, ctx);
+  }
+
+  _drawGrid(di, ctx) {
+    ctx.lineWidth = 1;
+    for (let y = 0; y <= di.contentHeight; y += 10) {
+      if (y % 50 === 0) {
+        ctx.strokeStyle = '#cccccc';
+      } else {
+        ctx.strokeStyle = '#eeeeee';
+      }
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(di.contentWidth, y);
+      ctx.stroke();
+      ctx.closePath();
+    }
+    for (let x = 0; x <= di.contentWidth; x += 10) {
+      if (x % 50 === 0) {
+        ctx.strokeStyle = '#cccccc';
+      } else {
+        ctx.strokeStyle = '#eeeeee';
+      }
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, di.contentHeight);
+      ctx.stroke();
+      ctx.closePath();
+    }
   }
 }
 
-export class Stack {
-  width;
-  height;
-  id;
+export class Stack extends CanvasComponent {
   children;
 
   constructor(...children) {
+    super();
     this.children = children;
   }
   static new(...children) {
     return new Stack(...children);
+  }
+
+  init() {
+    this.children.forEach((child) => child.init());
   }
 
   measure(di, ctx) {
@@ -97,10 +245,7 @@ export class Stack {
   }
 }
 
-export class Positional {
-  width;
-  height;
-  id;
+export class Positional extends CanvasComponent {
   child;
 
   mode;
@@ -108,6 +253,7 @@ export class Positional {
   y;
 
   constructor({ mode = 'relative', x = 0, y = 0 }, child) {
+    super();
     this.mode = mode;
     this.x = x;
     this.y = y;
@@ -115,6 +261,10 @@ export class Positional {
   }
   static new({ mode = 'relative', x = 0, y = 0 }, child) {
     return new Positional(...arguments);
+  }
+
+  init() {
+    this.child?.init();
   }
 
   measure(di, ctx) {
@@ -157,21 +307,23 @@ export class Positional {
   }
 }
 
-export class Column {
-  width;
-  height;
-  id;
+export class Column extends CanvasComponent {
   children;
 
   alignment;
 
   constructor({ alignment = 'left', width }, ...children) {
+    super();
     this.children = children;
     this.alignment = alignment;
     this.width = width;
   }
   static new({ alignment = 'left', width }, ...children) {
     return new Column(...arguments);
+  }
+
+  init() {
+    this.children.forEach((child) => child.init());
   }
 
   measure(di, ctx) {
@@ -198,20 +350,22 @@ export class Column {
   }
 }
 
-export class Row {
-  width;
-  height;
-  id;
+export class Row extends CanvasComponent {
   children;
 
   alignment;
 
   constructor({ alignment = 'top' }, ...children) {
+    super();
     this.children = children;
     this.alignment = alignment;
   }
   static new({ alignment = 'top' }, ...children) {
     return new Row(...arguments);
+  }
+
+  init() {
+    this.children.forEach((child) => child.init());
   }
 
   measure(di, ctx) {
@@ -256,10 +410,7 @@ export class Row {
   }
 }
 
-export class Padding {
-  width;
-  height;
-  id;
+export class Padding extends CanvasComponent {
   child;
 
   left;
@@ -268,6 +419,7 @@ export class Padding {
   bottom;
 
   constructor({ left, right, top, bottom }, child) {
+    super();
     this.child = child;
     this.left = left ?? 0;
     this.right = right ?? 0;
@@ -296,6 +448,10 @@ export class Padding {
       { left: distance, right: distance, top: distance, bottom: distance },
       child,
     );
+  }
+
+  init() {
+    this.child?.init();
   }
 
   measure(di, ctx) {
@@ -330,7 +486,7 @@ export class Padding {
   }
 }
 
-export class Text {
+export class Text extends CanvasComponent {
   content;
   actualContent;
   color;
@@ -338,10 +494,13 @@ export class Text {
   weight;
   lineHeight;
 
-  widthFix;
   textWrap;
   maxLines;
   overflow;
+
+  get shouldExpand() {
+    return !!this.providers[ExpandProvider.name];
+  }
 
   constructor(
     content = '',
@@ -350,18 +509,17 @@ export class Text {
       size = 10,
       weight = 'normal',
       lineHeight,
-      widthFix = false,
       textWrap = 'nowrap',
       maxLines,
       overflow = 'ellipsis',
     },
   ) {
+    super();
     this.content = content;
     this.actualContent = '';
     this.color = color;
     this.size = size;
     this.lineHeight = lineHeight ?? size;
-    this.widthFix = widthFix;
     this.weight = weight;
     this.textWrap = textWrap;
     this.maxLines = maxLines;
@@ -374,7 +532,6 @@ export class Text {
       size = 10,
       weight = 'normal',
       lineHeight,
-      widthFix = false,
       textWrap = 'nowrap',
       maxLines,
       overflow = 'ellipsis',
@@ -382,6 +539,8 @@ export class Text {
   ) {
     return new Text(...arguments);
   }
+
+  init() { }
 
   _setActualContent(di, ctx) {
     if (this.textWrap === 'nowrap') {
@@ -417,7 +576,7 @@ export class Text {
 
   measure(di, ctx) {
     this._setActualContent(di, ctx);
-    if (this.widthFix) {
+    if (this.shouldExpand) {
       this.width = di.contentWidth;
     } else if (this.textWrap === 'nowrap') {
       const m = measureTextWithFont(ctx, this.actualContent, this);
@@ -441,7 +600,7 @@ export class Text {
     ctx.textBaseline = 'top';
     const x = di.x;
     const y = di.y + (this.lineHeight - this.size) / 2;
-    setFont(ctx, this);
+    setFont(di, ctx, this);
     this._setActualContent(di, ctx);
     if (this.textWrap === 'nowrap') {
       ctx.fillText(this.actualContent, x, y);
@@ -453,15 +612,14 @@ export class Text {
   }
 }
 
-export class CanvasImage {
+export class CanvasImage extends CanvasComponent {
   img;
   mode;
   widthOverride;
   heightOverride;
-  width;
-  height;
 
   constructor(img, { mode = 'original', width, height }) {
+    super();
     this.img = img;
     this.mode = mode;
     this.widthOverride = width;
@@ -476,6 +634,8 @@ export class CanvasImage {
   static new(img, { mode = 'original', width, height }) {
     return new CanvasImage(...arguments);
   }
+
+  init() { }
 
   measure(di, ctx) {
     if (this.img == null) {
@@ -502,6 +662,119 @@ export class CanvasImage {
   }
 }
 
+export class Rect extends CanvasComponent {
+  color;
+  stroked;
+  lineWidth;
+  borderRadius;
+
+  get shouldExpand() {
+    return !!this.providers[ExpandProvider.name];
+  }
+
+  constructor({
+    width = 10,
+    height = 10,
+    color = 'black',
+    stroked = false,
+    lineWidth = 1,
+    borderRadius = 0,
+  }) {
+    super();
+    this.height = height;
+    this.width = width;
+    this.color = color;
+    this.stroked = stroked;
+    this.lineWidth = lineWidth;
+    this.borderRadius = borderRadius;
+  }
+  static new({
+    width,
+    height = 10,
+    color = 'black',
+    stroked = true,
+    lineWidth = 1,
+    borderRadius = 0,
+  }) {
+    return new Rect(...arguments);
+  }
+
+  // 做了额外事情的 init 不可在构造函数调用。
+  init() {
+    if (this.shouldExpand) {
+      this.width = undefined;
+    }
+  }
+
+  measure(di, ctx) {
+    if (this.shouldExpand) {
+      this.width = di.contentWidth;
+    }
+  }
+
+  draw(di, ctx) {
+    this.measure(di, ctx);
+    if (this.stroked) {
+      ctx.lineWidth = this.lineWidth;
+      ctx.strokeStyle = toCanvasColor(di, ctx, this.color);
+      ctx.beginPath();
+      ctx.roundRect(di.x, di.y, this.width, this.height, this.borderRadius);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = toCanvasColor(di, ctx, this.color);
+      ctx.beginPath();
+      ctx.roundRect(di.x, di.y, this.width, this.height, this.borderRadius);
+      ctx.fill();
+    }
+  }
+}
+
+export class Outlined extends CanvasComponent {
+  child;
+
+  lineWidth;
+  color;
+  borderRadius;
+
+  constructor({ lineWidth = 1, color = 'black', borderRadius = 0 }, child) {
+    super();
+    this.child = child;
+    this.lineWidth = lineWidth;
+    this.color = color;
+    this.borderRadius = borderRadius;
+  }
+  static new({ lineWidth, color, borderRadius }, child) {
+    return new Outlined(...arguments);
+  }
+
+  init() {
+    this.child?.init();
+  }
+
+  measure(di, ctx) {
+    if (!this.child) return;
+    this.child.measure(di, ctx);
+    this.width = this.child.width;
+    this.height = this.child.height;
+  }
+
+  draw(di, ctx) {
+    if (!this.child) return;
+    this.child.measure(di, ctx);
+    Stack.new(
+      this.child,
+      Rect.new({
+        width: this.child.width,
+        height: this.child.height,
+        color: this.color,
+        stroked: true,
+        lineWidth: this.lineWidth,
+        borderRadius: this.borderRadius,
+      }),
+    ).draw(di, ctx);
+  }
+}
+
 function getActualTextContent(ctx, text, font, maxWidth) {
   const textWidth = measureTextWithFont(ctx, text, font).width;
   if (textWidth <= maxWidth) {
@@ -520,7 +793,7 @@ function getActualTextContent(ctx, text, font, maxWidth) {
 function getActualTextLines(ctx, text, font, maxWidth, maxLines, overflow) {
   const lines = [];
   let lineStart = 0;
-  for (let i = 0; i <= text.length; ) {
+  for (let i = 0; i <= text.length;) {
     let line = text.slice(lineStart, i);
     let width = measureTextWithFont(ctx, line, font).width;
     if (i - lineStart <= 1 || width <= maxWidth) {
@@ -541,8 +814,8 @@ function getActualTextLines(ctx, text, font, maxWidth, maxLines, overflow) {
   return lines;
 }
 
-function setFont(ctx, font) {
-  ctx.fillStyle = font.color;
+function setFont(di, ctx, font) {
+  ctx.fillStyle = toCanvasColor(di, ctx, font.color) ?? 'black';
   const weight = font.weight ?? '';
   const size = font.size ?? 10;
   ctx.font = `${weight} ${size}px sans-serif`;
@@ -553,7 +826,7 @@ function measureText(ctx, text) {
 }
 
 export function measureTextWithFont(ctx, text, font) {
-  setFont(ctx, font);
+  setFont({}, ctx, font);
   return measureText(ctx, text);
 }
 
@@ -572,5 +845,79 @@ function getAlignedY(alignment, top, columnHeight, elementHeight) {
     return top + columnHeight / 2 - elementHeight / 2;
   } else {
     return top;
+  }
+}
+
+export class ExpandProvider {
+  constructor() { }
+}
+
+export class Expand extends CanvasComponent {
+  child;
+
+  constructor(child) {
+    super();
+    provide(child, ExpandProvider);
+    this.child = child;
+  }
+  static new(child) {
+    return new Expand(child);
+  }
+
+  init() {
+    this.child?.init();
+  }
+
+  measure(di, ctx) {
+    this.child.measure(di, ctx);
+    this.width = di.contentWidth;
+    this.height = this.child.height;
+  }
+
+  draw(di, ctx) {
+    this.child.draw(di, ctx);
+  }
+}
+
+export const ExpandModifier = (child) =>
+  SingleChildCustomComponent.new(
+    {
+      measure(di, ctx) {
+        this.child.measure(di, ctx);
+        this.child.width = this.width = di.contentWidth;
+        this.height = this.child.height;
+      },
+      draw(di, ctx) {
+        this.measure(di, ctx);
+        this.child.draw(di, ctx);
+      },
+    },
+    child,
+  );
+
+export class LinearGradient {
+  colorStops;
+  constructor(...colorStops) {
+    this.colorStops = colorStops;
+  }
+  toCanvasColor(di, ctx) {
+    const grad = ctx.createLinearGradient(
+      di.x,
+      di.y,
+      di.x + di.contentWidth,
+      di.y + di.contentHeight,
+    );
+    this.colorStops.forEach(({ offset, color }) => {
+      grad.addColorStop(offset, color);
+    });
+    return grad;
+  }
+}
+
+export function toCanvasColor(di, ctx, color) {
+  if (typeof color.toCanvasColor === 'function') {
+    return color.toCanvasColor(di, ctx);
+  } else {
+    return color;
   }
 }

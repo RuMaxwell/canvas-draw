@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script type="module" src="canvasDraw.js"></script>
+</head>
+
+<body>
+    <div>
+        <canvas id="canvas" width="500" height="750"
+            style="border: 1px solid black; width: 60vh; height: 90vh;"></canvas>
+    </div>
+    <div>
+        <button id="downloadButton" style="margin-top: 20px;">Download</button>
+    </div>
+    <script type="module">
+        import {
+            getDrawInstance, Canvas, Column, Row, Padding, Stack, Positional, CustomComponent, Text, CanvasImage, Rect, Outlined,
+            LinearGradient, SingleChildCustomComponent, Expand,
+        } from './canvasDraw.js'
+
+        const canvas = document.querySelector('#canvas')
+        const ctx = canvas.getContext('2d')
+        const di = getDrawInstance(canvas.width, canvas.height)
+
+        const Button = (text) => Outlined.new(
+            { borderRadius: 5 },
+            Canvas.new(
+                { backgroundColor: 'white' },
+                Padding.symmetric(
+                    { horizontal: 10, vertical: 5 },
+                    Expand.new(
+                        Text.new(text, { size: 15 }),
+                    ),
+                )
+            )
+        )
+        const ExpandModifier = (child) => {
+            const com = SingleChildCustomComponent.new({
+                measure(di, ctx) {
+                    this.child.measure(di, ctx)
+                    this.child.width = this.width = di.contentWidth
+                    this.height = this.child.height
+                },
+                draw(di, ctx) {
+                    this.measure(di, ctx)
+                    this.child.draw(di, ctx)
+                },
+            })
+            com.child = child
+            return com
+        }
+
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        img.addEventListener('load', () => {
+            const dom = Canvas.new(
+                { backgroundColor: new LinearGradient({ offset: 0, color: '#ffe' }, { offset: 1, color: '#eff' }), grid: true },
+                Column.new(
+                    {},
+                    Padding.all(
+                        20,
+                        Stack.new(
+                            Expand.new(
+                                Rect.new({ height: 100, color: '#9999ff99', borderRadius: 10 }).ofId('RECT'),
+                            ),
+                            CustomComponent.new({
+                                measure(di, ctx) {
+                                    this.width = 0
+                                    this.height = 0
+                                },
+                                draw(di, ctx) {
+                                    ctx.strokeStyle = 'red'
+                                    ctx.strokeRect(di.x, di.y, 100, 100)
+                                },
+                            }),
+                            Positional.new({ mode: 'absolute', x: 10, y: 10 },
+                                Outlined.new(
+                                    { color: 'green', lineWidth: 3, borderRadius: 5 },
+                                    Padding.all(
+                                        5,
+                                        Text.new('我Stackjg', { size: 20 }),
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ),
+                    CustomComponent.new({
+                        measure(di, ctx) {
+                            this.width = 200
+                            this.height = 50
+                        },
+                        draw(di, ctx) {
+                            const { x, y } = di
+                            ctx.lineWidth = 1
+                            ctx.strokeStyle = 'orange'
+                            ctx.beginPath()
+                            ctx.moveTo(x + 0, y + 0)
+                            ctx.lineTo(x + 150, y + 0)
+                            ctx.lineTo(x + 140, y + 30)
+                            ctx.stroke()
+
+                            ctx.lineWidth = 3
+                            ctx.strokeStyle = 'cyan'
+                            ctx.beginPath()
+                            ctx.moveTo(x + 20, y + 10)
+                            ctx.lineTo(x + 80, y + 10)
+                            ctx.arcTo(x + 90, y + 10, x + 90, y + 20, 10)
+                            ctx.stroke()
+
+                            ctx.lineWidth = 1
+                            ctx.strokeStyle = 'black'
+                            ctx.beginPath()
+                            ctx.roundRect(x + 160, y + 0, 40, 40, 10)
+                            ctx.stroke()
+                        },
+                    }),
+                    Row.new(
+                        {},
+                        Button('Cancel'),
+                        Button('Confirm'),
+                    ),
+                ),
+            )
+
+            dom.init()
+
+            dom.measure(di, ctx)
+            canvas.height = dom.height
+            console.log('cavnas height:', dom.height)
+            canvas.style.height = 60 / canvas.width * canvas.height + 'vh'
+
+            dom.draw(getDrawInstance(canvas.width, canvas.height), ctx)
+
+            document.getElementById('downloadButton').addEventListener('click', () => {
+                const link = document.createElement('a')
+                link.download = 'poster.png'
+                link.href = canvas.toDataURL()
+                link.click()
+            })
+        }, false)
+        img.src = 'https://fanyi-cdn.cdn.bcebos.com/static/translation/img/header/logo_e835568.png'
+    </script>
+</body>
+
+</html>

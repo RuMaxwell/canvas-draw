@@ -4,9 +4,9 @@ interface DrawInstance {
   canvasWidth: number;
   /** 全画布高度。 */
   canvasHeight: number;
-  /** 可绘制区域宽度。 */
+  /** 可绘制区域宽度。通常被严格限制，大部分组件的真实宽度不能超过此宽度。 */
   contentWidth: number;
-  /** 可绘制区域高度（暂时没有用）。 */
+  /** 可绘制区域高度。只有固定高度的组件才能限制内容的真实高度，否则高度会由内容的高度决定。 */
   contentHeight: number;
   /** 可绘制区域左边距。 */
   x: number;
@@ -14,8 +14,9 @@ interface DrawInstance {
   y: number;
 }
 
+/** 字体配置选项。 */
 interface Font {
-  color?: string;
+  color?: Color;
   size?: number;
   weight?: string;
 }
@@ -23,7 +24,15 @@ interface Font {
 /** 根据 canvas 的宽度和高度获取一个全新的可绘制区域。 */
 declare function getDrawInstance(canvasWidth: number, canvasHeight: number): DrawInstance;
 
-declare function measureTextWithFont(ctx: CanvasRenderingContext2D, text: string, font: Font);
+/** 用一种特定的字体测量一段文字的尺寸数据。 */
+declare function measureTextWithFont(ctx: CanvasRenderingContext2D, text: string, font: Font): TextMetrics;
+
+interface Provider {
+}
+
+interface ProviderConstructor {
+  new(...arg: any[]): Provider;
+}
 
 /** 任何组件的基类。 */
 class CanvasComponent {
@@ -34,22 +43,34 @@ class CanvasComponent {
   /** 自定义的名称，用于调试。 */
   id?: string;
 
+  /** 父组件注入的依赖。 */
+  providers: Record<string, ProviderConstructor>;
+
+  /** 额外的初始化程序，会在父组件 init 后调用。
+   * 因为求值顺序，子组件会在父组件之前构造，所以该函数可以处理一些在父组件构造成功以后才能正确初始化的状态。
+   * 最外层组件的 init 需要在构造后手动调用。*/
+  init(): void;
+
   /** 测量组件的宽度和高度。 */
   measure(di: DrawInstance, ctx: CanvasRenderingContext2D): void;
   /** 在 canvas 上绘制组件。 */
   draw(di: DrawInstance, ctx: CanvasRenderingContext2D): void;
+
+  /** 为该组件赋予 id 并返回组件自身。 */
+  ofId(id: string): CanvasComponent;
 }
 
-/** 单个子组件的组件类。 */
+/** 有单个子组件的组件。 */
 class SingleChildComponent extends CanvasComponent {
   child?: CanvasComponent;
 }
 
-/** 多个子组件的组件类。 */
+/** 有多个子组件的组件。 */
 class MultiChildComponent extends CanvasComponent {
   children: CanvasComponent[];
 }
 
+/** 临时使用的匿名组件，可以自定义 `measure` 和 `draw` 方法。应该为了特定的、一次性的绘制在组件树中直接构造这个组件。大量重复利用的情况应该继承 CanvasComponent 或其子类创建新的组件。 */
 export class CustomComponent extends CanvasComponent {
   constructor(options: {
     measure: (di: DrawInstance, ctx: CanvasRenderingContext2D) => void;
@@ -61,6 +82,7 @@ export class CustomComponent extends CanvasComponent {
   }): CustomComponent;
 }
 
+/** 临时使用的匿名组件，可以自定义 `measure` 和 `draw` 方法，且能包含一个子组件。应该为了特定的、一次性的绘制在组件树中直接构造这个组件。大量重复利用的情况应该继承 CanvasComponent 或其子类创建新的组件。 */
 export class SingleChildCustomComponent extends CustomComponent {
   constructor(
     options: {
@@ -78,6 +100,7 @@ export class SingleChildCustomComponent extends CustomComponent {
   ): SingleChildCustomComponent;
 }
 
+/** 临时使用的匿名组件，可以自定义 `measure` 和 `draw` 方法，且能包含多个子组件。应该为了特定的、一次性的绘制在组件树中直接构造这个组件。大量重复利用的情况应该继承 CanvasComponent 或其子类创建新的组件。 */
 export class MultiChildCustomComponent extends CustomComponent {
   constructor(
     options: {
@@ -95,12 +118,15 @@ export class MultiChildCustomComponent extends CustomComponent {
   ): MultiChildCustomComponent;
 }
 
-/** 画布组件，可设置一块区域的背景色。 */
+/** 画布组件，可设置一块区域的背景色。还有一些辅助功能。 */
 export class Canvas extends SingleChildComponent {
-  backgroundColor: string;
+  /** 可绘制区域背景色。 */
+  backgroundColor: Color;
+  /** 显示以 10 为单位的网格。 */
+  grid: boolean;
 
-  constructor(options: { backgroundColor: string = 'transparent' }, child?: CanvasComponent);
-  static new(options: { backgroundColor: string = 'transparent' }, child?: CanvasComponent): Canvas;
+  constructor(options: { backgroundColor: Color = 'transparent'; grid: boolean = false; }, child?: CanvasComponent);
+  static new(options: { backgroundColor: Color = 'transparent'; grid: boolean = false; }, child?: CanvasComponent): Canvas;
 }
 
 export class Stack extends MultiChildComponent {
@@ -174,7 +200,7 @@ export class Text extends CanvasComponent {
   /** 实际绘制的文本内容，当内容超出可绘制区域时，根据 `overflow` 属性，实际绘制的文本内容可能会被截断。 */
   actualContent: string;
   /** 文字颜色。 */
-  color: string;
+  color: Color;
   /** 字号。 */
   size: number;
   /** 粗细。 */
@@ -194,7 +220,7 @@ export class Text extends CanvasComponent {
   constructor(
     content: string = '',
     options: {
-      color: string = 'black';
+      color: Color = 'black';
       size: number = 10;
       weight: string = 'normal';
       lineHeight?: number;
@@ -208,7 +234,7 @@ export class Text extends CanvasComponent {
   static new(
     content: string = '',
     options: {
-      color: string = 'black';
+      color: Color = 'black';
       size: number = 10;
       weight: string = 'normal';
       lineHeight?: number;
@@ -235,3 +261,66 @@ export class CanvasImage extends CanvasComponent {
     options: { mode: CanvasImage['mode'] = 'original'; width?: number; height?: number; }
   ): CanvasImage;
 }
+
+export class Rect extends CanvasComponent {
+  width?: number;
+  height: number;
+  expandOnWidth: boolean;
+  color: Color;
+  stroked: boolean;
+  lineWidth: number;
+  borderRadius: number;
+
+  constructor(options: {
+    width?: number;
+    height: number = 10;
+    expandOnWidth: boolean = false;
+    color: Color = 'black';
+    stroked: boolean = false;
+    lineWidth: number = 1;
+    borderRadius: number = 0;
+  });
+  static new(options: {
+    width?: number;
+    height: number = 10;
+    expandOnWidth: boolean = false;
+    color: Color = 'black';
+    stroked: boolean = false;
+    lineWidth: number = 1;
+    borderRadius: number = 0;
+  }): Rect;
+}
+
+export class Outlined extends SingleChildComponent {
+  lineWidth: number;
+  color: Color;
+  borderRadius: number;
+
+  constructor(options: { lineWidth: number = 1; color: Color = 'black'; borderRadius: number = 0; }, child?: CanvasComponent);
+  static new(options: { lineWidth: number = 1; color: Color = 'black'; borderRadius: number = 0; }, child?: CanvasComponent): Outlined;
+}
+
+export type Color = CanvasRenderingContext2D['fillStyle'] | CustomCanvasColor;
+
+interface CustomCanvasColor {
+  toCanvasColor<T extends CanvasRenderingContext2D['fillStyle']>(di: DrawInstance, ctx: CanvasRenderingContext2D): T;
+}
+
+export class ExpandProvider {
+  constructor();
+}
+
+export class Expand extends SingleChildComponent {
+  constructor(child?: CanvasComponent);
+  static new(child?: CanvasComponent): Expand;
+}
+
+declare const ExpandModifier: (child: CanvasComponent) => SingleChildCustomComponent;
+
+export class LinearGradient implements CustomCanvasColor {
+  colorStops: { offset: number; color: string; }[];
+  constructor(...colorStops: LinearGradient['colorStops']);
+  toCanvasColor(di: DrawInstance, ctx: CanvasRenderingContext2D): CanvasGradient;
+}
+
+declare function toCanvasColor(di: DrawInstance, ctx: CanvasRenderingContext2D, color: Color): CanvasRenderingContext2D['fillStyle'];
