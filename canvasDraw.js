@@ -9,7 +9,7 @@ export function getDrawInstance(canvasWidth, canvasHeight) {
   };
 }
 
-function provide(component, providerConstructor, ...args) {
+export function provide(component, providerConstructor, ...args) {
   if (typeof providerConstructor !== 'function') {
     throw new Error('provider is not a function');
   }
@@ -93,7 +93,7 @@ export class SingleChildCustomComponent extends CanvasComponent {
     { init = function () { }, measure = function () { }, draw = function () { } },
     child,
   ) {
-    return new CustomComponent(...arguments);
+    return new SingleChildCustomComponent(...arguments);
   }
 
   init() {
@@ -129,7 +129,7 @@ export class MultiChildCustomComponent extends CanvasComponent {
     { init = function () { }, measure = function () { }, draw = function () { } },
     ...children
   ) {
-    return new CustomComponent(...arguments);
+    return new MultiChildCustomComponent(...arguments);
   }
 
   init() {
@@ -498,10 +498,6 @@ export class Text extends CanvasComponent {
   maxLines;
   overflow;
 
-  get shouldExpand() {
-    return !!this.providers[ExpandProvider.name];
-  }
-
   constructor(
     content = '',
     {
@@ -576,9 +572,7 @@ export class Text extends CanvasComponent {
 
   measure(di, ctx) {
     this._setActualContent(di, ctx);
-    if (this.shouldExpand) {
-      this.width = di.contentWidth;
-    } else if (this.textWrap === 'nowrap') {
+    if (this.textWrap === 'nowrap') {
       const m = measureTextWithFont(ctx, this.actualContent, this);
       this.width = m.width;
     } else {
@@ -668,10 +662,6 @@ export class Rect extends CanvasComponent {
   lineWidth;
   borderRadius;
 
-  get shouldExpand() {
-    return !!this.providers[ExpandProvider.name];
-  }
-
   constructor({
     width = 10,
     height = 10,
@@ -699,18 +689,9 @@ export class Rect extends CanvasComponent {
     return new Rect(...arguments);
   }
 
-  // 做了额外事情的 init 不可在构造函数调用。
-  init() {
-    if (this.shouldExpand) {
-      this.width = undefined;
-    }
-  }
+  init() { }
 
-  measure(di, ctx) {
-    if (this.shouldExpand) {
-      this.width = di.contentWidth;
-    }
-  }
+  measure(di, ctx) { }
 
   draw(di, ctx) {
     this.measure(di, ctx);
@@ -848,38 +829,7 @@ function getAlignedY(alignment, top, columnHeight, elementHeight) {
   }
 }
 
-export class ExpandProvider {
-  constructor() { }
-}
-
-export class Expand extends CanvasComponent {
-  child;
-
-  constructor(child) {
-    super();
-    provide(child, ExpandProvider);
-    this.child = child;
-  }
-  static new(child) {
-    return new Expand(child);
-  }
-
-  init() {
-    this.child?.init();
-  }
-
-  measure(di, ctx) {
-    this.child.measure(di, ctx);
-    this.width = di.contentWidth;
-    this.height = this.child.height;
-  }
-
-  draw(di, ctx) {
-    this.child.draw(di, ctx);
-  }
-}
-
-export const ExpandModifier = (child) =>
+export const Expand = (child) =>
   SingleChildCustomComponent.new(
     {
       measure(di, ctx) {
@@ -915,7 +865,7 @@ export class LinearGradient {
 }
 
 export function toCanvasColor(di, ctx, color) {
-  if (typeof color.toCanvasColor === 'function') {
+  if (typeof color?.toCanvasColor === 'function') {
     return color.toCanvasColor(di, ctx);
   } else {
     return color;

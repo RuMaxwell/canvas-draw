@@ -34,6 +34,8 @@ interface ProviderConstructor {
   new(...arg: any[]): Provider;
 }
 
+declare function provide(component: CanvasComponent, providerConstructor: ProviderConstructor, ...args: any[]);
+
 /** 任何组件的基类。 */
 class CanvasComponent {
   /** 包括当前组件的所有子内容的宽度（计算 overflow 为 visible 的元素，不计算绝对定位元素）。在测量（调用 `measure` 方法）之前为 `undefined`。 */
@@ -129,12 +131,15 @@ export class Canvas extends SingleChildComponent {
   static new(options: { backgroundColor: Color = 'transparent'; grid: boolean = false; }, child?: CanvasComponent): Canvas;
 }
 
+/** 栈组件，在相同位置叠加多个子组件。先声明的组件在后声明的组件下方。 */
 export class Stack extends MultiChildComponent {
   constructor(...children: CanvasComponent[]);
   static new(...children: CanvasComponent[]): CanvasComponent;
 }
 
+/** 定位组件，可以给子组件指定相对于当前可绘制区域或整个画布的 x, y 偏移量。 */
 export class Positional extends SingleChildComponent {
+  /** 偏移量模式。`'relative'` 使得偏移量相对于当前可绘制区域的左上角，`'absolute'` 使得偏移量相对于整个画布的左上角。 */
   mode: 'relative' | 'absolute';
   x: number;
   y: number;
@@ -262,10 +267,13 @@ export class CanvasImage extends CanvasComponent {
   ): CanvasImage;
 }
 
+/** 矩形组件，绘制实心或空心矩形。 */
 export class Rect extends CanvasComponent {
+  /** 矩形的宽度。 */
   width?: number;
+  /** 矩形的高度。 */
   height: number;
-  expandOnWidth: boolean;
+  /** */
   color: Color;
   stroked: boolean;
   lineWidth: number;
@@ -274,7 +282,6 @@ export class Rect extends CanvasComponent {
   constructor(options: {
     width?: number;
     height: number = 10;
-    expandOnWidth: boolean = false;
     color: Color = 'black';
     stroked: boolean = false;
     lineWidth: number = 1;
@@ -283,7 +290,6 @@ export class Rect extends CanvasComponent {
   static new(options: {
     width?: number;
     height: number = 10;
-    expandOnWidth: boolean = false;
     color: Color = 'black';
     stroked: boolean = false;
     lineWidth: number = 1;
@@ -306,16 +312,7 @@ interface CustomCanvasColor {
   toCanvasColor<T extends CanvasRenderingContext2D['fillStyle']>(di: DrawInstance, ctx: CanvasRenderingContext2D): T;
 }
 
-export class ExpandProvider {
-  constructor();
-}
-
-export class Expand extends SingleChildComponent {
-  constructor(child?: CanvasComponent);
-  static new(child?: CanvasComponent): Expand;
-}
-
-declare const ExpandModifier: (child: CanvasComponent) => SingleChildCustomComponent;
+declare const Expand: (child: CanvasComponent) => SingleChildCustomComponent;
 
 export class LinearGradient implements CustomCanvasColor {
   colorStops: { offset: number; color: string; }[];

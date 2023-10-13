@@ -26,18 +26,6 @@
         const ctx = canvas.getContext('2d')
         const di = getDrawInstance(canvas.width, canvas.height)
 
-        const Button = (text) => Outlined.new(
-            { borderRadius: 5 },
-            Canvas.new(
-                { backgroundColor: 'white' },
-                Padding.symmetric(
-                    { horizontal: 10, vertical: 5 },
-                    Expand.new(
-                        Text.new(text, { size: 15 }),
-                    ),
-                )
-            )
-        )
         const ExpandModifier = (child) => {
             const com = SingleChildCustomComponent.new({
                 measure(di, ctx) {
@@ -53,6 +41,18 @@
             com.child = child
             return com
         }
+        const Button = (text) => Outlined.new(
+            { borderRadius: 5 },
+            Canvas.new(
+                { backgroundColor: 'white' },
+                Padding.symmetric(
+                    { horizontal: 10, vertical: 5 },
+                    Expand.new(
+                        Text.new(text, { size: 15 }),
+                    ),
+                )
+            )
+        )
 
         const img = new Image()
         img.crossOrigin = 'anonymous'
