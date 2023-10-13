@@ -28,7 +28,7 @@ class CanvasComponent {
 
   providers = {};
 
-  constructor() {}
+  constructor() { }
 
   ofId(id) {
     this.id = id;
@@ -42,9 +42,9 @@ export class CustomComponent extends CanvasComponent {
   _draw;
 
   constructor({
-    init = function () {},
-    measure = function () {},
-    draw = function () {},
+    init = function () { },
+    measure = function () { },
+    draw = function () { },
   }) {
     super();
     this._init = init;
@@ -52,9 +52,9 @@ export class CustomComponent extends CanvasComponent {
     this._draw = draw;
   }
   static new({
-    init = function () {},
-    measure = function () {},
-    draw = function () {},
+    init = function () { },
+    measure = function () { },
+    draw = function () { },
   }) {
     return new CustomComponent(...arguments);
   }
@@ -80,7 +80,7 @@ export class SingleChildCustomComponent extends CanvasComponent {
   _draw;
 
   constructor(
-    { init = function () {}, measure = function () {}, draw = function () {} },
+    { init = function () { }, measure = function () { }, draw = function () { } },
     child,
   ) {
     super();
@@ -90,7 +90,7 @@ export class SingleChildCustomComponent extends CanvasComponent {
     this.child = child;
   }
   static new(
-    { init = function () {}, measure = function () {}, draw = function () {} },
+    { init = function () { }, measure = function () { }, draw = function () { } },
     child,
   ) {
     return new SingleChildCustomComponent(...arguments);
@@ -117,7 +117,7 @@ export class MultiChildCustomComponent extends CanvasComponent {
   _draw;
 
   constructor(
-    { init = function () {}, measure = function () {}, draw = function () {} },
+    { init = function () { }, measure = function () { }, draw = function () { } },
     ...children
   ) {
     super();
@@ -126,7 +126,7 @@ export class MultiChildCustomComponent extends CanvasComponent {
     this.children = children;
   }
   static new(
-    { init = function () {}, measure = function () {}, draw = function () {} },
+    { init = function () { }, measure = function () { }, draw = function () { } },
     ...children
   ) {
     return new MultiChildCustomComponent(...arguments);
@@ -162,6 +162,10 @@ export class CircleShaped extends CanvasComponent {
   }
   static new(child) {
     return new CircleShaped(...arguments);
+  }
+
+  init() {
+    this.child?.init();
   }
 
   measure(di, ctx) {
@@ -209,6 +213,10 @@ export class RectangleShaped extends CanvasComponent {
   }
   static new({ radius = 0 }, child) {
     return new RectangleShaped(...arguments);
+  }
+
+  init() {
+    this.child?.init();
   }
 
   measure(di, ctx) {
@@ -671,7 +679,7 @@ export class Text extends CanvasComponent {
     return new Text(...arguments);
   }
 
-  init() {}
+  init() { }
 
   _setActualContent(di, ctx) {
     if (this.textWrap === 'nowrap') {
@@ -770,7 +778,7 @@ export class CanvasImage extends CanvasComponent {
     return new CanvasImage(...arguments);
   }
 
-  init() {}
+  init() { }
 
   measure(di, ctx) {
     if (this.img == null) {
@@ -837,9 +845,9 @@ export class Rect extends CanvasComponent {
     return new Rect(...arguments);
   }
 
-  init() {}
+  init() { }
 
-  measure(di, ctx) {}
+  measure(di, ctx) { }
 
   draw(di, ctx) {
     this.measure(di, ctx);
@@ -891,6 +899,7 @@ export class Outlined extends CanvasComponent {
     if (!this.child) return;
     this.child.measure(di, ctx);
     Stack.new(
+      {},
       this.child,
       Rect.new({
         width: this.child.width,
@@ -922,7 +931,7 @@ function getActualTextContent(ctx, text, font, maxWidth) {
 function getActualTextLines(ctx, text, font, maxWidth, maxLines, overflow) {
   const lines = [];
   let lineStart = 0;
-  for (let i = 0; i <= text.length; ) {
+  for (let i = 0; i <= text.length;) {
     let line = text.slice(lineStart, i);
     let width = measureTextWithFont(ctx, line, font).width;
     if (i - lineStart <= 1 || width <= maxWidth) {

@@ -19,35 +19,20 @@
     <script type="module">
         import {
             getDrawInstance, Canvas, Column, Row, Padding, Stack, Positional, CustomComponent, Text, CanvasImage, Rect, Outlined,
-            LinearGradient, SingleChildCustomComponent, Expand,
+            LinearGradient, SingleChildCustomComponent, Expand, CircleShaped,
         } from './canvasDraw.js'
 
         const canvas = document.querySelector('#canvas')
         const ctx = canvas.getContext('2d')
         const di = getDrawInstance(canvas.width, canvas.height)
 
-        const ExpandModifier = (child) => {
-            const com = SingleChildCustomComponent.new({
-                measure(di, ctx) {
-                    this.child.measure(di, ctx)
-                    this.child.width = this.width = di.contentWidth
-                    this.height = this.child.height
-                },
-                draw(di, ctx) {
-                    this.measure(di, ctx)
-                    this.child.draw(di, ctx)
-                },
-            })
-            com.child = child
-            return com
-        }
         const Button = (text) => Outlined.new(
             { borderRadius: 5 },
             Canvas.new(
                 { backgroundColor: 'white' },
                 Padding.symmetric(
                     { horizontal: 10, vertical: 5 },
-                    Expand.new(
+                    Expand(
                         Text.new(text, { size: 15 }),
                     ),
                 )
@@ -58,13 +43,14 @@
         img.crossOrigin = 'anonymous'
         img.addEventListener('load', () => {
             const dom = Canvas.new(
-                { backgroundColor: new LinearGradient({ offset: 0, color: '#ffe' }, { offset: 1, color: '#eff' }), grid: true },
+                { backgroundColor: new LinearGradient('right', { offset: 0, color: '#ffe' }, { offset: 1, color: '#eff' }), grid: true },
                 Column.new(
                     {},
                     Padding.all(
                         20,
                         Stack.new(
-                            Expand.new(
+                            {},
+                            Expand(
                                 Rect.new({ height: 100, color: '#9999ff99', borderRadius: 10 }).ofId('RECT'),
                             ),
                             CustomComponent.new({
@@ -83,8 +69,8 @@
                                     Padding.all(
                                         5,
                                         Text.new('我Stackjg', { size: 20 }),
-                                    ),
-                                ),
+                                    ).ofId('PAD'),
+                                ).ofId('PAD < OUTLINE'),
                             ),
                         ),
                     ),
@@ -118,6 +104,15 @@
                             ctx.stroke()
                         },
                     }),
+                    CircleShaped.new(
+                        Canvas.new(
+                            { backgroundColor: 'black' },
+                            Padding.all(
+                                4,
+                                CircleShaped.new(CanvasImage.new(img, {})),
+                            ),
+                        ),
+                    ),
                     Row.new(
                         {},
                         Button('Cancel'),
@@ -130,7 +125,7 @@
 
             dom.measure(di, ctx)
             canvas.height = dom.height
-            console.log('cavnas height:', dom.height)
+            console.log('canvas height:', dom.height)
             canvas.style.height = 60 / canvas.width * canvas.height + 'vh'
 
             dom.draw(getDrawInstance(canvas.width, canvas.height), ctx)
@@ -142,7 +137,7 @@
                 link.click()
             })
         }, false)
-        img.src = 'https://fanyi-cdn.cdn.bcebos.com/static/translation/img/header/logo_e835568.png'
+        img.src = 'https://picsum.photos/100'
     </script>
 </body>
 
