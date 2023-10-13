@@ -120,6 +120,18 @@ export class MultiChildCustomComponent extends CustomComponent {
   ): MultiChildCustomComponent;
 }
 
+export class CircleShaped extends SingleChildComponent {
+  constructor(child?: CanvasComponent);
+  static new(child?: CanvasComponent): CircleShaped;
+}
+
+export class RectangleShaped extends SingleChildComponent {
+  radius: number;
+
+  constructor(options: { radius: number = 0; }, child?: CanvasComponent);
+  static new(options: { radius: number = 0; }, child?: CanvasComponent): RectangleShaped;
+}
+
 /** 画布组件，可设置一块区域的背景色。还有一些辅助功能。 */
 export class Canvas extends SingleChildComponent {
   /** 可绘制区域背景色。 */
@@ -256,14 +268,24 @@ export class CanvasImage extends CanvasComponent {
   img?: HTMLImageElement;
   /** 尺寸模式。`'original'` 表示按图片原本大小显示。`'widthFix'` 表示填满可绘制区域宽度，并按比例设置高度。 */
   mode: 'original' | 'widthFix';
+  widthOverride?: number;
+  heightOverride?: number;
 
   constructor(
     img?: HTMLImageElement,
-    options: { mode: CanvasImage['mode'] = 'original'; width?: number; height?: number; }
+    options: {
+      mode: CanvasImage['mode'] = 'original';
+      width?: number;
+      height?: number;
+    },
   );
   static new(
     img?: HTMLImageElement,
-    options: { mode: CanvasImage['mode'] = 'original'; width?: number; height?: number; }
+    options: {
+      mode: CanvasImage['mode'] = 'original';
+      width?: number;
+      height?: number;
+    },
   ): CanvasImage;
 }
 
@@ -312,11 +334,16 @@ interface CustomCanvasColor {
   toCanvasColor<T extends CanvasRenderingContext2D['fillStyle']>(di: DrawInstance, ctx: CanvasRenderingContext2D): T;
 }
 
+/** 使子元素占满整个可绘制区域的宽度。 */
 declare const Expand: (child: CanvasComponent) => SingleChildCustomComponent;
 
+/** 用类似于 CSS `linear-gradient` 函数的方法快速创建线性渐变的 `CanvasGradient` 表示。需要在赋值给 `fillStyle` 或 `strokeStyle` 前调用 `toCanvasColor` 转换。 */
 export class LinearGradient implements CustomCanvasColor {
+  direction: 'up' | 'down' | 'left' | 'right';
   colorStops: { offset: number; color: string; }[];
-  constructor(...colorStops: LinearGradient['colorStops']);
+
+  constructor(direction: LinearGradient['direction'] = 'up', ...colorStops: LinearGradient['colorStops']);
+
   toCanvasColor(di: DrawInstance, ctx: CanvasRenderingContext2D): CanvasGradient;
 }
 

@@ -145,6 +145,107 @@ export class MultiChildCustomComponent extends CanvasComponent {
   }
 }
 
+export class CircleShaped extends CanvasComponent {
+  child;
+
+  constructor(child) {
+    super();
+    this.child = child;
+    if (child) {
+      if (child.width) {
+        this.width = this.child.width;
+      }
+      if (child.height) {
+        this.height = this.child.height;
+      }
+    }
+  }
+  static new(child) {
+    return new CircleShaped(...arguments);
+  }
+
+  measure(di, ctx) {
+    if (!this.child) return;
+    this.child.measure(di, ctx);
+    this.width = this.child.width;
+    this.height = this.child.height;
+  }
+
+  draw(di, ctx) {
+    if (!this.child) return;
+    this.measure(di, ctx);
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(
+      di.x + this.width / 2,
+      di.y + this.height / 2,
+      this.width / 2,
+      0,
+      Math.PI * 2,
+    );
+    ctx.clip();
+    this.child.draw(di, ctx);
+    ctx.restore();
+  }
+}
+
+export class RectangleShaped extends CanvasComponent {
+  child;
+
+  radius;
+
+  constructor({ radius = 0 }, child) {
+    super();
+    this.child = child;
+    this.radius = radius;
+    if (child) {
+      if (child.width) {
+        this.width = this.child.width;
+      }
+      if (child.height) {
+        this.height = this.child.height;
+      }
+    }
+  }
+  static new({ radius = 0 }, child) {
+    return new RectangleShaped(...arguments);
+  }
+
+  measure(di, ctx) {
+    if (!this.child) return;
+    this.child.measure(di, ctx);
+    this.width = this.child.width;
+    this.height = this.child.height;
+  }
+
+  draw(di, ctx) {
+    if (!this.child) return;
+    this.measure(di, ctx);
+    ctx.save();
+    ctx.beginPath();
+    const r = this.radius;
+    ctx.moveTo(di.x + r, di.y);
+    ctx.lineTo(di.x + this.width - r, di.y);
+    ctx.arcTo(di.x + this.width, di.y, di.x + this.width, di.y + r, r);
+    ctx.lineTo(di.x + this.width, di.y + this.height - r);
+    ctx.arcTo(
+      di.x + this.width,
+      di.y + this.height,
+      di.x + this.width - r,
+      di.y + this.height,
+      r,
+    );
+    ctx.lineTo(di.x + r, di.y + this.height);
+    ctx.arcTo(di.x, di.y + this.height, di.x, di.y + this.height - r, r);
+    ctx.lineTo(di.x, di.y + r);
+    ctx.arcTo(di.x, di.y, di.x + r, di.y, r);
+    ctx.closePath();
+    ctx.clip();
+    this.child.draw(di, ctx);
+    ctx.restore();
+  }
+}
+
 export class Canvas extends CanvasComponent {
   child;
 
@@ -156,6 +257,14 @@ export class Canvas extends CanvasComponent {
     this.child = child;
     this.backgroundColor = backgroundColor;
     this.grid = grid;
+    if (child) {
+      if (child.width) {
+        this.width = child.width;
+      }
+      if (child.height) {
+        this.height = child.height;
+      }
+    }
   }
   static new({ backgroundColor = 'transparent', grid = false }, child) {
     return new Canvas(...arguments);
@@ -846,16 +955,26 @@ export const Expand = (child) =>
   );
 
 export class LinearGradient {
+  direction;
   colorStops;
-  constructor(...colorStops) {
+
+  static directions(di) {
+    return {
+      up: [di.x, di.y + di.contentHeight, di.x, di.y],
+      down: [di.x, di.y, di.x, di.y + di.contentHeight],
+      left: [di.x + di.contentWidth, di.y, di.x, di.y],
+      right: [di.x, di.y, di.x + di.contentWidth, di.y],
+    };
+  }
+
+  constructor(direction = 'up', ...colorStops) {
+    this.direction = direction;
     this.colorStops = colorStops;
   }
+
   toCanvasColor(di, ctx) {
     const grad = ctx.createLinearGradient(
-      di.x,
-      di.y,
-      di.x + di.contentWidth,
-      di.y + di.contentHeight,
+      ...LinearGradient.directions(di)[this.direction],
     );
     this.colorStops.forEach(({ offset, color }) => {
       grad.addColorStop(offset, color);
