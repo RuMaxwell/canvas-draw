@@ -145,8 +145,11 @@ export class Canvas extends SingleChildComponent {
 
 /** 栈组件，在相同位置叠加多个子组件。先声明的组件在后声明的组件下方。 */
 export class Stack extends MultiChildComponent {
-  constructor(...children: CanvasComponent[]);
-  static new(...children: CanvasComponent[]): CanvasComponent;
+  widthOverride;
+  heightOverride;
+
+  constructor(options: { width?: number; height?: number; }, ...children: CanvasComponent[]);
+  static new(options: { width?: number; height?: number; }, ...children: CanvasComponent[]): CanvasComponent;
 }
 
 /** 定位组件，可以给子组件指定相对于当前可绘制区域或整个画布的 x, y 偏移量。 */

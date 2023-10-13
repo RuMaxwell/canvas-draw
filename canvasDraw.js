@@ -28,7 +28,7 @@ class CanvasComponent {
 
   providers = {};
 
-  constructor() { }
+  constructor() {}
 
   ofId(id) {
     this.id = id;
@@ -42,9 +42,9 @@ export class CustomComponent extends CanvasComponent {
   _draw;
 
   constructor({
-    init = function () { },
-    measure = function () { },
-    draw = function () { },
+    init = function () {},
+    measure = function () {},
+    draw = function () {},
   }) {
     super();
     this._init = init;
@@ -52,9 +52,9 @@ export class CustomComponent extends CanvasComponent {
     this._draw = draw;
   }
   static new({
-    init = function () { },
-    measure = function () { },
-    draw = function () { },
+    init = function () {},
+    measure = function () {},
+    draw = function () {},
   }) {
     return new CustomComponent(...arguments);
   }
@@ -80,7 +80,7 @@ export class SingleChildCustomComponent extends CanvasComponent {
   _draw;
 
   constructor(
-    { init = function () { }, measure = function () { }, draw = function () { } },
+    { init = function () {}, measure = function () {}, draw = function () {} },
     child,
   ) {
     super();
@@ -90,7 +90,7 @@ export class SingleChildCustomComponent extends CanvasComponent {
     this.child = child;
   }
   static new(
-    { init = function () { }, measure = function () { }, draw = function () { } },
+    { init = function () {}, measure = function () {}, draw = function () {} },
     child,
   ) {
     return new SingleChildCustomComponent(...arguments);
@@ -117,7 +117,7 @@ export class MultiChildCustomComponent extends CanvasComponent {
   _draw;
 
   constructor(
-    { init = function () { }, measure = function () { }, draw = function () { } },
+    { init = function () {}, measure = function () {}, draw = function () {} },
     ...children
   ) {
     super();
@@ -126,7 +126,7 @@ export class MultiChildCustomComponent extends CanvasComponent {
     this.children = children;
   }
   static new(
-    { init = function () { }, measure = function () { }, draw = function () { } },
+    { init = function () {}, measure = function () {}, draw = function () {} },
     ...children
   ) {
     return new MultiChildCustomComponent(...arguments);
@@ -275,10 +275,14 @@ export class Canvas extends CanvasComponent {
   }
 
   measure(di, ctx) {
-    if (!this.child) return;
-    this.child.measure(di, ctx);
-    this.width = Math.min(this.child.width, di.contentWidth);
-    this.height = this.child.height;
+    if (!this.child) {
+      this.width = 0;
+      this.height = 0;
+    } else {
+      this.child.measure(di, ctx);
+      this.width = Math.min(this.child.width, di.contentWidth);
+      this.height = this.child.height;
+    }
   }
 
   draw(di, ctx) {
@@ -322,10 +326,18 @@ export class Canvas extends CanvasComponent {
 
 export class Stack extends CanvasComponent {
   children;
+  widthOverride;
+  heightOverride;
 
-  constructor(...children) {
+  constructor({ width, height }, ...children) {
     super();
     this.children = children;
+    if (width) {
+      this.width = this.widthOverride = width;
+    }
+    if (height) {
+      this.height = this.heightOverride = height;
+    }
   }
   static new(...children) {
     return new Stack(...children);
@@ -367,6 +379,14 @@ export class Positional extends CanvasComponent {
     this.x = x;
     this.y = y;
     this.child = child;
+    if (mode !== 'absolute' && child) {
+      if (child.width) {
+        this.width = child.width;
+      }
+      if (child.height) {
+        this.height = child.height;
+      }
+    }
   }
   static new({ mode = 'relative', x = 0, y = 0 }, child) {
     return new Positional(...arguments);
@@ -534,11 +554,13 @@ export class Padding extends CanvasComponent {
     this.right = right ?? 0;
     this.top = top ?? 0;
     this.bottom = bottom ?? 0;
-    if (this.child.width) {
-      this.width = this.child.width + this.left + this.right;
-    }
-    if (this.child.height) {
-      this.height = this.child.height + this.top + this.bottom;
+    if (child) {
+      if (child.width) {
+        this.width = this.child.width + this.left + this.right;
+      }
+      if (child.height) {
+        this.height = this.child.height + this.top + this.bottom;
+      }
     }
   }
   static new({ left, right, top, bottom }, child) {
@@ -564,7 +586,11 @@ export class Padding extends CanvasComponent {
   }
 
   measure(di, ctx) {
-    if (!this.child) return;
+    if (!this.child) {
+      this.width = Math.min(di.contentWidth, this.left + this.right);
+      this.height = this.top + this.bottom;
+      return;
+    }
     this.child.measure(
       {
         ...di,
@@ -645,7 +671,7 @@ export class Text extends CanvasComponent {
     return new Text(...arguments);
   }
 
-  init() { }
+  init() {}
 
   _setActualContent(di, ctx) {
     if (this.textWrap === 'nowrap') {
@@ -728,17 +754,23 @@ export class CanvasImage extends CanvasComponent {
     this.widthOverride = width;
     this.heightOverride = height;
     if (mode === 'original') {
-      this.width = width ?? img.width;
-      this.height =
-        height ??
-        (width != null ? (width / img.width) * img.height : img.height);
+      if (width != null && height == null) {
+        this.width = width;
+        this.height = (width / img.width) * img.height;
+      } else if (width == null && height != null) {
+        this.height = height;
+        this.width = (height / img.height) * img.width;
+      } else {
+        this.width = width ?? img.width;
+        this.height = height ?? img.height;
+      }
     }
   }
   static new(img, { mode = 'original', width, height }) {
     return new CanvasImage(...arguments);
   }
 
-  init() { }
+  init() {}
 
   measure(di, ctx) {
     if (this.img == null) {
@@ -750,12 +782,19 @@ export class CanvasImage extends CanvasComponent {
       this.width = di.contentWidth;
       this.height = (this.width / this.img.width) * this.img.height;
     } else {
-      this.width = this.widthOverride ?? this.img.width;
-      this.height =
-        this.heightOverride ??
-        (this.widthOverride != null
-          ? (this.widthOverride / this.img.width) * this.img.height
-          : this.img.height);
+      const width = this.widthOverride;
+      const height = this.heightOverride;
+      const img = this.img;
+      if (width != null && height == null) {
+        this.width = width;
+        this.height = (width / img.width) * img.height;
+      } else if (width == null && height != null) {
+        this.height = height;
+        this.width = (height / img.height) * img.width;
+      } else {
+        this.width = width ?? img.width;
+        this.height = height ?? img.height;
+      }
     }
   }
 
@@ -798,9 +837,9 @@ export class Rect extends CanvasComponent {
     return new Rect(...arguments);
   }
 
-  init() { }
+  init() {}
 
-  measure(di, ctx) { }
+  measure(di, ctx) {}
 
   draw(di, ctx) {
     this.measure(di, ctx);
@@ -883,7 +922,7 @@ function getActualTextContent(ctx, text, font, maxWidth) {
 function getActualTextLines(ctx, text, font, maxWidth, maxLines, overflow) {
   const lines = [];
   let lineStart = 0;
-  for (let i = 0; i <= text.length;) {
+  for (let i = 0; i <= text.length; ) {
     let line = text.slice(lineStart, i);
     let width = measureTextWithFont(ctx, line, font).width;
     if (i - lineStart <= 1 || width <= maxWidth) {
