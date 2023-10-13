@@ -43,7 +43,7 @@
 </html>
 ```
 
-各组件和函数的用法均写在 [`canvasDraw.d.ts`](./canvasDraw.d.ts) 文件的文档注释中。
+各组件和函数的用法均写在 [`canvasDraw.d.ts`](./canvasDraw-zh.d.ts) 文件的文档注释中。
 
 ## 运行示例
 
