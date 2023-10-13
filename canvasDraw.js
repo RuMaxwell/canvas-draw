@@ -755,13 +755,13 @@ export class CanvasImage extends CanvasComponent {
   widthOverride;
   heightOverride;
 
-  constructor(img, { mode = 'original', width, height }) {
+  constructor(img, { mode = 'fixed', width, height }) {
     super();
     this.img = img;
     this.mode = mode;
     this.widthOverride = width;
     this.heightOverride = height;
-    if (mode === 'original') {
+    if (mode === 'fixed') {
       if (width != null && height == null) {
         this.width = width;
         this.height = (width / img.width) * img.height;
@@ -774,7 +774,7 @@ export class CanvasImage extends CanvasComponent {
       }
     }
   }
-  static new(img, { mode = 'original', width, height }) {
+  static new(img, { mode = 'fixed', width, height }) {
     return new CanvasImage(...arguments);
   }
 
