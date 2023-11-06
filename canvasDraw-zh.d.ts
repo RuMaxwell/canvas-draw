@@ -192,9 +192,11 @@ export class Column extends MultiChildComponent {
 export class Row extends MultiChildComponent {
   /** 子组件的纵向对齐方式。 */
   alignment: 'top' | 'center';
+  /** 是否收缩到子组件自然宽度。为 `false` 时自动填满可绘制区域宽度。 */
+  shrink: boolean;
 
-  constructor(options: { alignment: Row['alignment'] = 'top' }, ...children: CanvasComponent[]);
-  static new(options: { alignment: Row['alignment'] = 'top' }, ...children: CanvasComponent[]): Row;
+  constructor(options: { alignment: Row['alignment'] = 'top'; shrink: boolean = false; }, ...children: CanvasComponent[]);
+  static new(options: { alignment: Row['alignment'] = 'top'; shrink: boolean = false; }, ...children: CanvasComponent[]): Row;
 }
 
 /** Padding 组件，在子组件周围添加填充边距。左右填充会使可绘制区域向中间横向收缩，上下填充会使纵向排列的组件之间出现间距。 */

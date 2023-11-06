@@ -198,6 +198,8 @@ export class Column extends MultiChildComponent {
 export class Row extends MultiChildComponent {
   /** Vertical alignment of the components. */
   alignment: 'top' | 'center';
+  /** Whether to shrink to fit the width of the children. If given `false`, the Row fills the width of the drawable area. */
+  shrink: boolean;
 
   constructor(options: { alignment: Row['alignment'] = 'top' }, ...children: CanvasComponent[]);
   static new(options: { alignment: Row['alignment'] = 'top' }, ...children: CanvasComponent[]): Row;

@@ -491,11 +491,13 @@ export class Row extends CanvasComponent {
   children;
 
   alignment;
+  shrink;
 
-  constructor({ alignment = 'top' }, ...children) {
+  constructor({ alignment = 'top', shrink = false }, ...children) {
     super();
     this.children = children;
     this.alignment = alignment;
+    this.shrink = shrink;
   }
   static new({ alignment = 'top' }, ...children) {
     return new Row(...arguments);
@@ -506,30 +508,42 @@ export class Row extends CanvasComponent {
   }
 
   measure(di, ctx) {
-    this.width = di.contentWidth;
+    if (this.shrink) {
+      let width = 0;
+      this.children.forEach((child) => {
+        child.measure(di, ctx);
+        width += child.width;
+      });
+      this.width = width;
+    } else {
+      this.width = di.contentWidth;
+      let totalFixedWidth = 0;
+      let fixedWidthCount = 0;
+      this.children.forEach((child) => {
+        if (child.width) {
+          totalFixedWidth += child.width;
+          fixedWidthCount++;
+        }
+      });
+      let totalDynamicWidth = this.width - totalFixedWidth;
+      const dynamicWidth =
+        this.children.length === fixedWidthCount
+          ? 0
+          : totalDynamicWidth / (this.children.length - fixedWidthCount);
+      this.children.forEach((child) => {
+        const contentWidth = child.width ?? dynamicWidth;
+        child.measure(
+          {
+            ...di,
+            contentWidth,
+          },
+          ctx,
+        );
+      });
+    }
+
     let height = 0;
-    let totalFixedWidth = 0;
-    let fixedWidthCount = 0;
     this.children.forEach((child) => {
-      if (child.width) {
-        totalFixedWidth += child.width;
-        fixedWidthCount++;
-      }
-    });
-    let totalDynamicWidth = this.width - totalFixedWidth;
-    const dynamicWidth =
-      this.children.length === fixedWidthCount
-        ? 0
-        : totalDynamicWidth / (this.children.length - fixedWidthCount);
-    this.children.forEach((child) => {
-      const contentWidth = child.width ?? dynamicWidth;
-      child.measure(
-        {
-          ...di,
-          contentWidth,
-        },
-        ctx,
-      );
       height = Math.max(height, child.height);
     });
     this.height = height;
@@ -855,12 +869,12 @@ export class Rect extends CanvasComponent {
       ctx.lineWidth = this.lineWidth;
       ctx.strokeStyle = toCanvasColor(di, ctx, this.color);
       ctx.beginPath();
-      ctx.roundRect(di.x, di.y, this.width, this.height, this.borderRadius);
+      ctx.roundRect(di.x, di.y, this.width, this.height, [this.borderRadius]);
       ctx.stroke();
     } else {
       ctx.fillStyle = toCanvasColor(di, ctx, this.color);
       ctx.beginPath();
-      ctx.roundRect(di.x, di.y, this.width, this.height, this.borderRadius);
+      ctx.roundRect(di.x, di.y, this.width, this.height, [this.borderRadius]);
       ctx.fill();
     }
   }
